@@ -1,0 +1,19 @@
+# Gradle files
+.gradle
+gradle
+gradlew
+gradlew.bat
+
+# Build files
+/build
+
+# Test app
+app
+
+# Android Studio files
+.idea
+local.properties
+Sampleandroid-sync-nosql.iml
+
+# Mac files
+.DS_Store
