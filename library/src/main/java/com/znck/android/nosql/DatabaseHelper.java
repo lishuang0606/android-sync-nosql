@@ -1,4 +1,4 @@
-package com.zunck.android.nosql;
+package com.znck.android.nosql;
 
 import android.content.Context;
 import android.util.Log;

@@ -1,10 +1,10 @@
-package com.zunck.android.nosql;
+package com.znck.android.nosql;
 
 import android.util.Log;
 
 import com.couchbase.lite.CouchbaseLiteException;
-import com.zunck.android.nosql.util.JSON;
-import com.zunck.android.nosql.util.JSONable;
+import com.znck.android.nosql.util.JSON;
+import com.znck.android.nosql.util.JSONable;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;

@@ -1,12 +1,12 @@
-package com.zunck.android.nosql.sync;
+package com.znck.android.nosql.sync;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.couchbase.lite.QueryEnumerator;
-import com.zunck.android.nosql.DatabaseHelper;
-import com.zunck.android.nosql.Document;
+import com.znck.android.nosql.DatabaseHelper;
+import com.znck.android.nosql.Document;
 
 import org.json.JSONObject;
 
@@ -55,7 +55,7 @@ abstract class BaseSyncManager {
     public final Date getLastSyncTimestamp() {
         Date date = null;
         try {
-            date = dateFormat.parse(preferences.getString(LAST_SYNC_TIMESTAMP, ""));
+            date = dateFormat.parse(preferences.getString(LAST_SYNC_TIMESTAMP, dateFormat.format(new Date())));
         } catch (ParseException e) {
             Log.d(TAG, "Date parse exception", e);
             date = new Date(0);

@@ -1,4 +1,4 @@
-package com.zunck.android.nosql.util;
+package com.znck.android.nosql.util;
 
 public interface JSONable {
     public String toJSON();

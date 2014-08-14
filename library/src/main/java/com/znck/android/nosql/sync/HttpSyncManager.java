@@ -1,18 +1,18 @@
-package com.zunck.android.nosql.sync;
+package com.znck.android.nosql.sync;
 
 import android.content.Context;
+import android.util.Log;
 import android.util.Pair;
 
-import com.loopj.android.http.AsyncHttpClient;
-import com.loopj.android.http.JsonHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
-import com.zunck.android.nosql.Document;
-import com.zunck.android.nosql.util.Callback;
-import com.zunck.android.nosql.util.JSON;
-import com.zunck.android.nosql.util.OnResult;
+import com.loopj.android.http.SyncHttpClient;
+import com.loopj.android.http.TextHttpResponseHandler;
+import com.znck.android.nosql.Document;
+import com.znck.android.nosql.util.Callback;
+import com.znck.android.nosql.util.JSON;
+import com.znck.android.nosql.util.OnResult;
 
 import org.apache.http.Header;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 abstract public class HttpSyncManager extends AsyncSyncManager {
-    private static AsyncHttpClient httpClient = new AsyncHttpClient();
+    private static SyncHttpClient httpClient = new SyncHttpClient();
 
     protected String host;
 
@@ -59,54 +59,48 @@ abstract public class HttpSyncManager extends AsyncSyncManager {
     protected Pair<String, String> user;
     protected Pair<String, String> pass;
 
-    protected class ResponseHandler extends JsonHttpResponseHandler {
+    protected class ResponseHandler extends TextHttpResponseHandler {
         private OnResult callback;
 
         public ResponseHandler(OnResult request) {
             this.callback = request != null ? request : new OnResult() {
                 @Override
-                public void run(int statusCode, Header[] headers, JSONObject response) {
+                public void run(int statusCode, Header[] headers, JSONObject response, String responseString) {
 
                 }
             };
         }
 
         @Override
-        public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-            super.onSuccess(statusCode, headers, response);
-            callback.run(statusCode, headers, response);
-        }
-
-        @Override
-        public void onSuccess(int statusCode, Header[] headers, JSONArray response) {
-            try {
-                callback.run(statusCode, headers, new JSONObject().put("__response__", response));
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-
-        @Override
         public void onSuccess(int statusCode, Header[] headers, String responseString) {
-            boolean isXML = false;
+            String contentType = "text/html";
             for (Header header : headers) {
-                if (header.getName().equals("Content-Type") && header.getValue().matches("[a-z]*/xml")) {
-                    isXML = true;
+                if (header.getName().equals("Content-Type")) {
+                    contentType = header.getValue();
                     break;
                 }
             }
-            if (isXML) {
+            JSONObject object = null;
+            if (contentType.matches(".*/xml$")) {
+
+            } else if(contentType.matches(".*/json$")) {
                 try {
-                    callback.run(statusCode, headers, new JSONObject().put("__responseString__", responseString));
+                    object = new JSONObject(responseString);
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    Log.d("NoSQL-SYNC", "Invalid JSON string", e);
                 }
+            } else if(contentType.matches(".*/plain")) {
+
+            } else {
+
             }
+            callback.run(statusCode, headers, object, responseString);
         }
 
         @Override
         public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
             onSuccess(statusCode, headers, responseString);
+            Log.d("NoSQL-SYNC", "Network query failed", throwable);
         }
     }
 
@@ -139,6 +133,7 @@ abstract public class HttpSyncManager extends AsyncSyncManager {
         RequestParams requestParams = new RequestParams(query);
 
         addAuth(requestParams, null);
+
         httpClient.get(host + request, requestParams, new ResponseHandler(onResult));
     }
 

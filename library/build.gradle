@@ -1,6 +1,5 @@
 apply plugin: 'android-library'
 apply plugin: 'maven-publish'
-//apply plugin: 'android-maven'
 
 android {
     compileSdkVersion 'android-L'
@@ -11,7 +10,6 @@ android {
     defaultPublishConfig "release"
 
     defaultConfig {
-        applicationId "com.zunk.android.nosql"
         minSdkVersion 7
         targetSdkVersion 20
         versionCode 1
@@ -37,81 +35,40 @@ repositories {
 }
 
 dependencies {
+    compile files('libs/couchbase-android-1.0.0-54.jar')
     compile 'com.couchbase.lite:couchbase-lite-android:+'
     compile 'com.google.code.gson:gson:+'
     compile 'com.loopj.android:android-async-http:+'
 }
 
-uploadArchives {
-    repositories {
-        flatDir {
-            dirs "$buildDir/release"
-        }
-    }
-}
-
-/*
-task sourceJar(type: Jar) {
-    from sourceSets.main.allJava
-}
-*/
-
-/*
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            groupId 'org.gradle.sample'
-            artifactId 'project1-sample'
-
-            from components.java
-
-            artifact sourceJar {
-                classifier "sources"
-            }
-        }
-
-        repositories {
-            maven {
-                url "$buildDir/"
-            }
-        }
-    }
-}
-*/
-
-/*
-task installArchives(type: Upload) {
-    description "Installs the artifacts to the local Maven repository."
-    configuration = configurations['archives']
-    repositories {
-        mavenDeployer {
-            repository url: "file://${System.properties['user.home']}/.m2/repository"
-        }
-    }
-}
-*/
-
-// load bundleRelease task
-// this will not load the task in 0.5.5
 android.libraryVariants
 
 task androidReleaseJar(type: Jar, dependsOn: assembleRelease) {
-    from "$buildDir/intermediates/classes/release/"
+
+    depClasses = configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    depClasses.add("$buildDir/intermediates/classes/release")
+
+    from({ depClasses }) {
+        exclude 'META-INF/MANIFEST.MF'
+        exclude '**AndroidManifest.xml'
+        exclude '**/res/**'
+        exclude "**/classes.jar"
+    }
 }
 
 publishing {
     publications {
         maven(MavenPublication) {
-            groupId 'com.zunck.anroid'
+            groupId 'com.znck.android'
             artifactId 'android-sync-nosql'
-            version '1.0.1'
+            version '1.0.1-1'
 
             artifact androidReleaseJar
         }
     }
-    repositories{
-        maven{
-            url "$buildDir/"
+    repositories {
+        maven {
+            url "$buildDir/../../releases/"
         }
     }
 }

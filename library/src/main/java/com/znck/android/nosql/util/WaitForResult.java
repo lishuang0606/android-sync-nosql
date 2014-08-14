@@ -1,4 +1,6 @@
-package com.zunck.android.nosql.util;
+package com.znck.android.nosql.util;
+
+import android.util.Log;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -12,12 +14,16 @@ public abstract class WaitForResult {
     abstract public void run();
 
     public final void execute() {
+        Log.d("SYNC", "Executing tasks");
         lock.lock();
         try {
+            run();
             while (working) {
+                Log.d("SYNC", "Waiting for tasks");
                 workingCondition.awaitUninterruptibly();
             }
         } finally {
+            Log.d("SYNC", "Tasks finished");
             unlock();
             lock.unlock();
         }

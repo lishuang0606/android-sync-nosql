@@ -1,7 +1,8 @@
-package com.zunck.android.nosql.sync;
+package com.znck.android.nosql.sync;
 
 import android.content.Context;
 import android.os.AsyncTask;
+import android.os.Looper;
 
 abstract class AsyncSyncManager extends BaseSyncManager {
 
@@ -28,7 +29,9 @@ abstract class AsyncSyncManager extends BaseSyncManager {
         AsyncTask<String, Double, String> runner = (new AsyncTask<String, Double, String>() {
             @Override
             protected String doInBackground(String... strings) {
+                Looper.prepare();
                 startingSync();
+                Looper.loop();
                 return "";
             }
 

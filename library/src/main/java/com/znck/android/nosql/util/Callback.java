@@ -1,6 +1,5 @@
-package com.zunck.android.nosql.util;
+package com.znck.android.nosql.util;
 
 abstract public class Callback {
     public abstract void run(Object... args);
 }
-
