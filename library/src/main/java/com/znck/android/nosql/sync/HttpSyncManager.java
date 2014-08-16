@@ -3,18 +3,19 @@ package com.znck.android.nosql.sync;
 import android.content.Context;
 import android.util.Log;
 import android.util.Pair;
-
+import com.couchbase.lite.QueryEnumerator;
 import com.loopj.android.http.RequestParams;
 import com.loopj.android.http.SyncHttpClient;
 import com.loopj.android.http.TextHttpResponseHandler;
+import com.znck.android.nosql.DatabaseHelper;
 import com.znck.android.nosql.Document;
 import com.znck.android.nosql.util.Callback;
 import com.znck.android.nosql.util.JSON;
 import com.znck.android.nosql.util.OnResult;
-
 import org.apache.http.Header;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.XML;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -59,7 +60,7 @@ abstract public class HttpSyncManager extends AsyncSyncManager {
     protected Pair<String, String> user;
     protected Pair<String, String> pass;
 
-    protected class ResponseHandler extends TextHttpResponseHandler {
+    protected static class ResponseHandler extends TextHttpResponseHandler {
         private OnResult callback;
 
         public ResponseHandler(OnResult request) {
@@ -82,25 +83,36 @@ abstract public class HttpSyncManager extends AsyncSyncManager {
             }
             JSONObject object = null;
             if (contentType.matches(".*/xml$")) {
-
-            } else if(contentType.matches(".*/json$")) {
+                Log.d("SYNC-Document-type", responseString.trim().substring(responseString.length() - 7).toLowerCase());
+                if (responseString.length() > 7 && responseString.trim().substring(responseString.length() - 7).toLowerCase().contains("</odml>")) {
+                    callback.contentType = OnResult.ContentType.OdML;
+                } else {
+                    callback.contentType = OnResult.ContentType.XML;
+                    try {
+                        object = XML.toJSONObject(responseString);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            } else if (contentType.matches(".*/json$")) {
+                callback.contentType = OnResult.ContentType.JSON;
                 try {
                     object = new JSONObject(responseString);
                 } catch (JSONException e) {
                     Log.d("NoSQL-SYNC", "Invalid JSON string", e);
                 }
-            } else if(contentType.matches(".*/plain")) {
-
+            } else if (contentType.matches(".*/plain")) {
+                callback.contentType = OnResult.ContentType.TEXT;
             } else {
-
+                callback.contentType = OnResult.ContentType.UNKNOWN;
             }
             callback.run(statusCode, headers, object, responseString);
         }
 
         @Override
         public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
-            onSuccess(statusCode, headers, responseString);
             Log.d("NoSQL-SYNC", "Network query failed", throwable);
+            callback.fail(statusCode, headers, responseString, throwable);
         }
     }
 
@@ -120,12 +132,22 @@ abstract public class HttpSyncManager extends AsyncSyncManager {
     @Override
     protected final void startDownload(Date start) {
         List<String> urls = downloadList(start);
+        QueryEnumerator it = DatabaseHelper.getInstance().between(Document.UPDATED_AT, dateFormat.format(start), null);
+        Map<String, Boolean> have = new HashMap<String, Boolean>();
+        while (it.hasNext()) {
+            have.put((String) it.next().getDocumentProperties().get(Document.REMOTE_ID), true);
+        }
+
         for (String url : urls) {
-            JSONObject object = download(url);
-            Document doc = new Document(JSON.parse(parseDownload(object)));
-            afterDownload(doc, object);
-            detectConflict(doc);
-            finalize(doc);
+            String[] urlMeta = url.split("#", 2);
+            JSONObject object = download(urlMeta[0], urlMeta[1], have.containsKey(urlMeta[0]));
+            if (null != object) {
+                Document doc = new Document((Map) JSON.parse(parseDownload(object)));
+                doc.setRemoteId(urlMeta[0], start);
+                afterDownload(doc, object);
+                detectConflict(doc);
+                finalize(doc);
+            }
         }
     }
 

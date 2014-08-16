@@ -41,7 +41,7 @@ public class DatabaseHelper {
     }
 
     public static void setUser(String user) {
-        if(null != user)
+        if (null != user)
             DatabaseHelper.user = user;
     }
 
@@ -49,7 +49,7 @@ public class DatabaseHelper {
     /**
      * property name for kind of document storing
      */
-    private static final String DATABASE_NAME = "database.db";
+    private static final String DATABASE_NAME = "database";
     private static DatabaseHelper instance;
     private static Manager manager = null;
     private static Database database = null;
@@ -106,14 +106,26 @@ public class DatabaseHelper {
         return database;
     }
 
+    public Query createQuery() {
+        return createQuery(false);
+    }
+
+    public Query createQuery(boolean override) {
+        return createQuery("_id", override);
+    }
+
     public Query createQuery(final String key) {
+        return createQuery(key, false);
+    }
+
+    public Query createQuery(final String key, final boolean override) {
         View view = database.getView("list-by-" + key);
         if (view.getMap() == null) {
             Mapper mapper = new Mapper() {
                 @Override
                 public void map(Map<String, Object> properties, Emitter emitter) {
                     String u = (String) properties.get(Document.USER_ID);
-                    if (user.equals(u) || u.equals("__default")) {
+                    if (override || user.equals(u) || u.equals("__default")) {
                         emitter.emit(key, properties);
                     }
                 }
@@ -126,13 +138,17 @@ public class DatabaseHelper {
     }
 
     public Query createQuery(final Set<String> where) {
+        return createQuery(where, false);
+    }
+
+    public Query createQuery(final Set<String> where, final boolean override) {
         View view = database.getView("list-by-" + where.toString());
         if (view.getMap() == null) {
             Mapper mapper = new Mapper() {
                 @Override
                 public void map(Map<String, Object> properties, Emitter emitter) {
                     String u = (String) properties.get(Document.USER_ID);
-                    if (user.equals(u) || u.equals("__default")) {
+                    if (override || user.equals(u) || u.equals("__default")) {
                         List<Object> compoundKey = new ArrayList<Object>();
 
                         for (String field : where) compoundKey.add(properties.get(field));
@@ -148,7 +164,11 @@ public class DatabaseHelper {
     }
 
     public QueryEnumerator find(String key, String value) {
-        Query query = createQuery(key);
+        return find(key, value, false);
+    }
+
+    public QueryEnumerator find(String key, String value, boolean override) {
+        Query query = createQuery(key, override);
 
         List<Object> keys = new ArrayList<Object>();
         keys.add(value);
@@ -163,28 +183,12 @@ public class DatabaseHelper {
         return null;
     }
 
-    public QueryEnumerator between(String key, String start, String end) {
-        Query query = createQuery(key);
-        query.setDescending(false);
-        if (null != start)
-            query.setStartKey(start);
-        if (null != end)
-            query.setEndKey(end);
-        try {
-            return query.run();
-        } catch (CouchbaseLiteException e) {
-            Log.i(TAG, "Cannot run query", e);
-        }
-        return null;
-    }
-
-    public int count(String key, String value) {
-        QueryEnumerator enumerator = find(key, value);
-        return null == enumerator ? 0 : enumerator.getCount();
-    }
-
     public QueryEnumerator find(Map<String, String> where) {
-        Query query = createQuery(where.keySet());
+        return find(where, false);
+    }
+
+    public QueryEnumerator find(Map<String, String> where, boolean override) {
+        Query query = createQuery(where.keySet(), override);
 
         List<Object> keys = new ArrayList<Object>();
         keys.addAll(where.values());
@@ -199,13 +203,77 @@ public class DatabaseHelper {
         return null;
     }
 
-    public int count(Map<String, String> where) {
-        QueryEnumerator enumerator = find(where);
+    public int count() {
+        return count(false);
+    }
+
+    public int count(boolean override) {
+        QueryEnumerator enumerator = null;
+        try {
+            enumerator = createQuery(override).run();
+            return null == enumerator ? 0 : enumerator.getCount();
+        } catch (CouchbaseLiteException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public int count(String key, String value) {
+        QueryEnumerator enumerator = find(key, value);
         return null == enumerator ? 0 : enumerator.getCount();
     }
 
+    public int count(Map<String, String> where) {
+        return count(where, false);
+    }
+
+    public int count(Map<String, String> where, boolean override) {
+        QueryEnumerator enumerator = find(where, override);
+        return null == enumerator ? 0 : enumerator.getCount();
+    }
+
+    public QueryEnumerator between(String key, String start, String end) {
+        return between(key, start, end, false);
+    }
+
+    public QueryEnumerator between(String key, String start, String end, boolean override) {
+        Query query = createQuery(key, false);
+        query.setDescending(false);
+        if (null != start)
+            query.setStartKey(start);
+        if (null != end)
+            query.setEndKey(end);
+        try {
+            return query.run();
+        } catch (CouchbaseLiteException e) {
+            Log.i(TAG, "Cannot run query", e);
+        }
+        return null;
+    }
+
+    public List<Document> get() {
+        return get(false);
+    }
+
+    public List<Document> get(boolean override) {
+        try {
+            return getList(createQuery(override).run());
+        } catch (CouchbaseLiteException e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<Document>();
+    }
+
     public List<Document> get(String key, String value) {
-        return getList(find(key, value));
+        return get(key, value, false);
+    }
+
+    public List<Document> get(String key, String value, boolean override) {
+        return getList(find(key, value, override));
+    }
+
+    public List<Document> get(Map<String, String> where, boolean override) {
+        return get(where, override);
     }
 
     public List<Document> get(Map<String, String> where) {
@@ -220,6 +288,13 @@ public class DatabaseHelper {
         return list;
     }
 
-
+    public boolean delete(Document document) {
+        try {
+            return  document.getDocument().delete();
+        } catch (CouchbaseLiteException e) {
+            Log.d(TAG, e.getMessage(), e);
+        }
+        return false;
+    }
 }
 

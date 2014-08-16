@@ -19,7 +19,7 @@ import java.util.Locale;
 abstract class BaseSyncManager {
     public static final String LAST_SYNC_TIMESTAMP = "last_sync_timestamp";
     private static final String TAG = BaseSyncManager.class.getName();
-    private final SimpleDateFormat dateFormat;
+    protected final SimpleDateFormat dateFormat;
     protected SharedPreferences preferences;
     protected Context context;
     protected Date lastSyncTimestamp;
@@ -69,11 +69,11 @@ abstract class BaseSyncManager {
 
     protected final QueryEnumerator changedLocallyAfter(Date date) {
         if (null == date) return null;
-        return DatabaseHelper.getInstance().between(Document.UPDATED_AT, dateFormat.format(date), null);
+        return DatabaseHelper.getInstance().between(Document.UPDATED_AT, dateFormat.format(date), null, true);
     }
 
     protected final Document detectConflict(Document remote) {
-        QueryEnumerator docs = DatabaseHelper.getInstance().find(Document.REMOTE_ID, (String) remote.get(Document.REMOTE_ID));
+        QueryEnumerator docs = DatabaseHelper.getInstance().find(Document.REMOTE_ID, "" + remote.get(Document.REMOTE_ID), true);
         int count = docs.getCount();
         if (1 < count) Log.d(TAG, "Injection conflict: Keeping only first entry for sync");
         if (0 == count) return null;
@@ -100,7 +100,7 @@ abstract class BaseSyncManager {
 
     protected final ArrayList<Document> uploadList(Date lastSync) {
         ArrayList<Document> docs = new ArrayList<Document>();
-        QueryEnumerator query = DatabaseHelper.getInstance().between(Document.SYNCED_AT, dateFormat.format(lastSync), null);
+        QueryEnumerator query = DatabaseHelper.getInstance().between(Document.SYNCED_AT, dateFormat.format(lastSync), null, true);
         while (query.hasNext()) {
             Document doc = new Document(query.next().getDocumentProperties());
             docs.add(doc);
@@ -124,7 +124,7 @@ abstract class BaseSyncManager {
 
     protected abstract void startDownload(Date start);
 
-    protected abstract JSONObject download(String url);
+    protected abstract JSONObject download(String url, String meta, boolean is);
 
     protected abstract JSONObject upload(Document doc);
 

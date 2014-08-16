@@ -35,7 +35,7 @@ repositories {
 }
 
 dependencies {
-    compile files('libs/couchbase-android-1.0.0-54.jar')
+    compile files('libs/couchbase-android-1.0.0-54.jar', 'libs/java-json.jar')
     compile 'com.couchbase.lite:couchbase-lite-android:+'
     compile 'com.google.code.gson:gson:+'
     compile 'com.loopj.android:android-async-http:+'

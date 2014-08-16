@@ -16,15 +16,21 @@ import java.util.Map;
 
 public class Document implements JSONable, Comparable<Document> {
     private final static String TAG = Document.class.getName();
-    public final static String CREATED_AT = "_created_at";
-    public final static String SYNCED_AT = "_synced_at";
-    public final static String UPDATED_AT = "_updated_at";
-    public final static String REMOTE_ID = "_remote_id";
-    public final static String USER_ID = "_user_id";
-    public final static String DOC_TYPE = "_doc_type";
+    public final static String CREATED_AT = "odml_created_at";
+    public final static String SYNCED_AT = "odml_synced_at";
+    public final static String UPDATED_AT = "odml_updated_at";
+    public final static String REMOTE_ID = "odml_remote_id";
+    public final static String USER_ID = "odml_user_id";
+    public final static String DOC_TYPE = "odml_doc_type";
+    public final static String DOC_TEXT = "odml_doc_text";
     public final static String TIMESTAMP_FORMAT = "E, d MMM yyyy HH:mm:ss Z";
     private static DatabaseHelper databaseHelper;
     protected boolean modified = false;
+
+    public com.couchbase.lite.Document getDocument() {
+        return document;
+    }
+
     private com.couchbase.lite.Document document;
     private Map<String, Object> properties = new HashMap<String, Object>();
     private SimpleDateFormat dateFormat;
@@ -64,9 +70,9 @@ public class Document implements JSONable, Comparable<Document> {
         if (null == databaseHelper)
             throw new IllegalAccessException("DatabaseHelper should be initialized before creating NoSQL store objects");
 
-        if (null == this.document) this.document = databaseHelper.getDatabase().createDocument();
+        properties = document != null ? document.getProperties() : new HashMap<String, Object>();
 
-        properties = document.getProperties();
+        if (null == this.document) this.document = databaseHelper.getDatabase().createDocument();
 
         set(REMOTE_ID, 0, false);
         set(CREATED_AT, dateFormat.format(new Date()), false);
@@ -129,9 +135,10 @@ public class Document implements JSONable, Comparable<Document> {
 
     public String commit() {
         try {
-            return document.putProperties(properties).getId();
+            document.putProperties(properties);
+            return document.getId();
         } catch (CouchbaseLiteException e) {
-            Log.d(TAG, "Cannot write to Database", e);
+            Log.d(TAG, e.getMessage(), e);
         }
         return null;
     }
@@ -168,7 +175,7 @@ public class Document implements JSONable, Comparable<Document> {
     }
 
     public void updateSyncTimestamp(Date date) {
-        set(SYNCED_AT, dateFormat.format(date));
+        properties.put(SYNCED_AT, dateFormat.format(date));
         commit();
     }
 }
