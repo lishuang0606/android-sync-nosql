@@ -35,8 +35,12 @@ public class Document implements JSONable, Comparable<Document> {
     private Map<String, Object> properties = new HashMap<String, Object>();
     private SimpleDateFormat dateFormat;
 
-    public Document() throws IllegalAccessException {
-        build();
+    public Document() {
+        try {
+            build();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
     }
 
     public Document(com.couchbase.lite.Document document) {
