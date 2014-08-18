@@ -34,10 +34,11 @@ abstract class BaseSyncManager {
 
     public void startSync() {
         Date start = new Date();
+        Log.d("SYNC", "Sync service: uploading");
         startUpload(start);
-        // TODO store remote
+        Log.d("SYNC", "Sync service: downloading");
         startDownload(start);
-        // TODO notify dataset changed
+        Log.d("SYNC", "Sync service: finish");
         Date end = new Date();
     }
 
@@ -80,15 +81,20 @@ abstract class BaseSyncManager {
         Document local = new Document(docs.next().getDocumentProperties());
         switch (mergeScheme) {
             case MERGE_OVER_WRITE_LOCAL:
+                Log.d("SYNC", "Sync service: conflict - keeping local");
                 local.set(remote, true);
                 return local;
             case MERGE_OVER_WRITE_REMOTE:
+                Log.d("SYNC", "Sync service: conflict - keeping remote");
                 remote.set(local, true);
                 return remote;
             case MERGE_CREATE_NEW:
+                Log.d("SYNC", "Sync service: conflict - new");
                 local.set(Document.REMOTE_ID, 0, true);
                 local.commit();
                 return remote;
+            default:
+                Log.d("SYNC", "Sync service: no conflicts");
         }
         return null;
     }

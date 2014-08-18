@@ -3,6 +3,7 @@ package com.znck.android.nosql.sync;
 import android.content.Context;
 import android.util.Log;
 import android.util.Pair;
+
 import com.couchbase.lite.QueryEnumerator;
 import com.loopj.android.http.RequestParams;
 import com.loopj.android.http.SyncHttpClient;
@@ -12,6 +13,7 @@ import com.znck.android.nosql.Document;
 import com.znck.android.nosql.util.Callback;
 import com.znck.android.nosql.util.JSON;
 import com.znck.android.nosql.util.OnResult;
+
 import org.apache.http.Header;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -120,34 +122,52 @@ abstract public class HttpSyncManager extends AsyncSyncManager {
 
     @Override
     protected final void startUpload(Date start) {
+        Log.d("SYNC", "Sync service: upload list created");
         List<Document> docs = uploadList(start);
+        Log.d("SYNC", "Sync service: upload count" + docs.size());
         for (Document doc : docs) {
+            Log.d("SYNC", doc.getProperties().toString());
+            Log.d("SYNC", "Sync service: calling upload");
             JSONObject object = upload(doc);
+            Log.d("SYNC", "Sync service: calling after upload");
             afterUpload(doc, object);
+            Log.d("SYNC", "Sync service: updating timestamp");
             doc.updateSyncTimestamp(start);
+            Log.d("SYNC", "Sync service: finalize upload");
             finalize(doc);
         }
+        Log.d("SYNC", "Sync service: uploaded all docs");
     }
 
     @Override
     protected final void startDownload(Date start) {
+//        Log.d("SYNC", "Sync service: creating download list");
         List<String> urls = downloadList(start);
-        QueryEnumerator it = DatabaseHelper.getInstance().between(Document.UPDATED_AT, dateFormat.format(start), null);
-        Map<String, Boolean> have = new HashMap<String, Boolean>();
-        while (it.hasNext()) {
-            have.put((String) it.next().getDocumentProperties().get(Document.REMOTE_ID), true);
-        }
-
+//        Log.d("SYNC", "Sync service: download count: " + urls.size());
         for (String url : urls) {
             String[] urlMeta = url.split("#", 2);
-            JSONObject object = download(urlMeta[0], urlMeta[1], have.containsKey(urlMeta[0]));
+//            Log.d("SYNC", "Sync service: download url data " + Arrays.toString(urlMeta));
+//            Log.d("SYNC", "Sync service: search existing");
+            QueryEnumerator it = DatabaseHelper.getInstance().find(Document.REMOTE_ID, urlMeta[0], true);
+            boolean have = it.getCount() > 0;
+//            if(have) {
+//                Log.d("SYNC", "Sync service: found in database" + it.getCount());
+//                Log.d("SYNC", "Sync service: downloading" + DatabaseHelper.getInstance().getList(it).toString());
+//            }
+//            else Log.d("SYNC", "Sync service: not found");
+
+            JSONObject object = download(urlMeta[0], urlMeta[1], have);
             if (null != object) {
                 Document doc = new Document((Map) JSON.parse(parseDownload(object)));
                 doc.setRemoteId(urlMeta[0], start);
+//                Log.d("SYNC", "Sync service: after download");
                 afterDownload(doc, object);
-                detectConflict(doc);
+//                Log.d("SYNC", "Sync service: detecting conflicts");
+//                detectConflict(doc);
+//                Log.d("SYNC", "Sync service: finalizing changes");
                 finalize(doc);
             }
+//            else Log.d("SYNC", "Sync service: skipping to next");
         }
     }
 
@@ -169,7 +189,7 @@ abstract public class HttpSyncManager extends AsyncSyncManager {
 
     public final void post(String request, Map<String, String> query, Map<String, String> body, Callback callback, OnResult onResult) {
         RequestParams requestParams = new RequestParams(query);
-        RequestParams postParams = null == body ? null : new RequestParams(body);
+        RequestParams postParams = null == body ? new RequestParams() : new RequestParams(body);
 
         if (null != callback) callback.run(postParams);
 

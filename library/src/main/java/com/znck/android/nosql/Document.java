@@ -1,7 +1,6 @@
 package com.znck.android.nosql;
 
 import android.util.Log;
-
 import com.couchbase.lite.CouchbaseLiteException;
 import com.znck.android.nosql.util.JSON;
 import com.znck.android.nosql.util.JSONable;
@@ -37,6 +36,7 @@ public class Document implements JSONable, Comparable<Document> {
 
     public Document() {
         try {
+            this.document = databaseHelper.getDatabase().createDocument();
             build();
         } catch (IllegalAccessException e) {
             e.printStackTrace();
@@ -44,21 +44,24 @@ public class Document implements JSONable, Comparable<Document> {
     }
 
     public Document(com.couchbase.lite.Document document) {
-        this.document = document;
         try {
+            if (null == document) document = databaseHelper.getDatabase().createDocument();
+            else this.properties.putAll(document.getProperties());
+            this.document = document;
             build();
         } catch (IllegalAccessException e) {
             Log.d(TAG, e.getMessage(), e);
         }
     }
 
-    public Document(Map<String, Object> properties){
+    public Document(Map<String, Object> properties) {
         try {
+            this.document = databaseHelper.getDatabase().createDocument();
+            if(null != properties) this.properties.putAll(properties);
             build();
         } catch (IllegalAccessException e) {
             Log.d(TAG, e.getMessage(), e);
         }
-        this.properties.putAll(properties);
     }
 
     public static boolean init(DatabaseHelper db) {
@@ -74,16 +77,7 @@ public class Document implements JSONable, Comparable<Document> {
         if (null == databaseHelper)
             throw new IllegalAccessException("DatabaseHelper should be initialized before creating NoSQL store objects");
 
-        properties = document != null ? document.getProperties() : new HashMap<String, Object>();
-
-        if (null == this.document) this.document = databaseHelper.getDatabase().createDocument();
-
-        set(REMOTE_ID, 0, false);
-        set(CREATED_AT, dateFormat.format(new Date()), false);
-        set(UPDATED_AT, dateFormat.format(new Date()), false);
-        set(SYNCED_AT, dateFormat.format(new Date(0)), false);
         set(USER_ID, DatabaseHelper.getUser());
-        set(DOC_TYPE, "__none");
     }
 
     public void set(String key, Object value) {
@@ -139,12 +133,18 @@ public class Document implements JSONable, Comparable<Document> {
 
     public String commit() {
         try {
-            document.putProperties(properties);
-            return document.getId();
+            if (modified) {
+                set(REMOTE_ID, 0, false);
+                set(CREATED_AT, dateFormat.format(new Date()), false);
+                set(UPDATED_AT, dateFormat.format(new Date()), false);
+                set(SYNCED_AT, dateFormat.format(new Date(0)), false);
+                set(DOC_TYPE, "__none", false);
+                return document.putProperties(properties).getId();
+            }
         } catch (CouchbaseLiteException e) {
             Log.d(TAG, e.getMessage(), e);
         }
-        return null;
+        return document.getId();
     }
 
     @Override
@@ -169,8 +169,7 @@ public class Document implements JSONable, Comparable<Document> {
 
     public void setRemoteId(String remoteId, Date syncedAt) {
         set(REMOTE_ID, remoteId, true);
-        set(SYNCED_AT, dateFormat.format(syncedAt));
-        commit();
+        updateSyncTimestamp(syncedAt);
     }
 
     @Override
@@ -181,5 +180,14 @@ public class Document implements JSONable, Comparable<Document> {
     public void updateSyncTimestamp(Date date) {
         properties.put(SYNCED_AT, dateFormat.format(date));
         commit();
+    }
+
+    public boolean delete() {
+        try {
+            return document.delete();
+        } catch (CouchbaseLiteException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }

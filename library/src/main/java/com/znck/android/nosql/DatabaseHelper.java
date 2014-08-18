@@ -125,8 +125,10 @@ public class DatabaseHelper {
                 @Override
                 public void map(Map<String, Object> properties, Emitter emitter) {
                     String u = (String) properties.get(Document.USER_ID);
+//                    Log.d("SYNC", "from: " + u);
                     if (override || user.equals(u) || u.equals("__default")) {
-                        emitter.emit(key, properties);
+//                        Log.d("SYNC", "emitting: " + key + "=" + properties.get(key));
+                        emitter.emit(properties.get(key), properties);
                     }
                 }
             };
@@ -168,6 +170,7 @@ public class DatabaseHelper {
     }
 
     public QueryEnumerator find(String key, String value, boolean override) {
+//        Log.d("SYNC", "find: " + key + "=" + value);
         Query query = createQuery(key, override);
 
         List<Object> keys = new ArrayList<Object>();
@@ -280,7 +283,7 @@ public class DatabaseHelper {
         return getList(find(where));
     }
 
-    protected List<Document> getList(QueryEnumerator it) {
+    public List<Document> getList(QueryEnumerator it) {
         List<Document> list = new ArrayList<Document>();
         for (; it.hasNext(); ) {
             list.add(new Document(it.next().getDocument()));
@@ -290,7 +293,7 @@ public class DatabaseHelper {
 
     public boolean delete(Document document) {
         try {
-            return  document.getDocument().delete();
+            return document.getDocument().delete();
         } catch (CouchbaseLiteException e) {
             Log.d(TAG, e.getMessage(), e);
         }
